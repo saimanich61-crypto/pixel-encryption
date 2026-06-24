@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pixel Manipulation Image Encryptor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f1a;
+      color: #e2e2f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 {
+      font-size: 2rem; font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 0.4rem;
+    }
+    header p { font-size: 0.95rem; color: #8888aa; }
+    .card {
+      background: #1a1a2e; border: 1px solid #2e2e4a;
+      border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem;
+    }
+    .card h2 {
+      font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #7878aa; margin-bottom: 1rem;
+    }
+    .form-row {
+      display: flex; align-items: center; gap: 12px;
+      flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .form-row label { font-size: 13px; color: #9090bb; min-width: 100px; }
+
+    /* Big upload area */
+    .upload-area {
+      border: 2px dashed #3b3b6a; border-radius: 10px;
+      padding: 2rem; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 1rem;
+    }
+    .upload-area:hover { border-color: #7c6af5; background: #1e1e38; }
+    .upload-area.has-image { border-color: #22aa6a; border-style: solid; }
+    .upload-area p { font-size: 14px; color: #8888aa; margin-top: 8px; }
+    .upload-area .icon { font-size: 2.5rem; }
+    #img-input { display: none; }
+
+    input[type="number"], select {
+      background: #0f0f1a; border: 1px solid #2e2e4a;
+      border-radius: 6px; color: #e2e2f0; font-size: 13px;
+      padding: 6px 10px; outline: none; transition: border-color 0.2s;
+    }
+    input[type="number"]:focus, select:focus { border-color: #7c6af5; }
+    input[type="number"] { width: 90px; }
+    select { width: 210px; }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+    button {
+      padding: 10px 22px; border-radius: 8px; font-size: 14px;
+      font-weight: 600; cursor: pointer; border: 1px solid transparent;
+      transition: all 0.18s;
+    }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-enc { background: #3b3be8; color: #fff; border-color: #5555ff; }
+    .btn-enc:hover:not(:disabled) { background: #5050f5; }
+    .btn-dec { background: #1a7a4a; color: #fff; border-color: #22aa6a; }
+    .btn-dec:hover:not(:disabled) { background: #22aa6a; }
+    .btn-dl  { background: #0f0f1a; color: #a78bfa; border-color: #4444aa; }
+    .btn-dl:hover:not(:disabled) { background: #1a1a3a; }
+    .btn-reset { background: transparent; color: #8888aa; border-color: #2e2e4a; }
+    .btn-reset:hover:not(:disabled) { color: #e2e2f0; border-color: #6666aa; }
+
+    .canvas-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px;
+    }
+    .canvas-wrap { text-align: center; }
+    .canvas-wrap span {
+      display: block; font-size: 12px; color: #7878aa;
+      margin-bottom: 8px; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    canvas {
+      display: block; margin: 0 auto;
+      border: 1px solid #2e2e4a; border-radius: 8px;
+      max-width: 100%; background: #0a0a14;
+    }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 1rem;
+    }
+    .stat-box {
+      background: #0f0f1a; border: 1px solid #2e2e4a;
+      border-radius: 8px; padding: 12px; text-align: center;
+    }
+    .stat-box .n { font-size: 1.3rem; font-weight: 600; color: #a78bfa; }
+    .stat-box .l { font-size: 11px; color: #7878aa; margin-top: 3px; }
+
+    .badge {
+      display: inline-block; font-size: 11px; padding: 3px 10px;
+      border-radius: 20px; font-weight: 600; margin-left: 8px;
+    }
+    .badge-ready { background: #2a2a00; color: #facc15; }
+    .badge-enc   { background: #1a1a55; color: #818cf8; }
+    .badge-dec   { background: #052e1e; color: #34d399; }
+    .badge-none  { background: #1a1a2e; color: #7878aa; border: 1px solid #2e2e4a; }
+
+    .method-hint {
+      font-size: 12px; color: #7878aa; margin: 8px 0 14px;
+      padding: 8px 12px; background: #0f0f1a;
+      border-radius: 6px; border-left: 3px solid #3b3be8;
+    }
+
+    .alert {
+      padding: 10px 14px; border-radius: 8px; font-size: 13px;
+      margin-bottom: 12px; display: none;
+    }
+    .alert-warn { background: #2a1a00; color: #facc15; border: 1px solid #5a3a00; }
+    .alert-ok   { background: #052e1e; color: #34d399; border: 1px solid #0a5a30; }
+
+    @media (max-width: 560px) {
+      .canvas-row { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🔐 Pixel Manipulation Encryptor</h1>
+    <p>Encrypt and decrypt images using pixel-level operations</p>
+  </header>
+
+  <!-- Upload -->
+  <div class="card">
+    <h2>Step 1 — Load image <span id="status-badge" class="badge badge-none">No image</span></h2>
+    <div class="upload-area" id="upload-area">
+      <div class="icon">📂</div>
+      <p id="upload-text">Click here to choose an image (PNG / JPG / GIF / WebP)</p>
+    </div>
+    <input type="file" id="img-input" accept="image/*">
+  </div>
+
+  <!-- Settings -->
+  <div class="card">
+    <h2>Step 2 — Choose settings</h2>
+    <div id="alert-noimg" class="alert alert-warn">⚠️ Please load an image first before encrypting or decrypting.</div>
+
+    <div class="form-row">
+      <label>🔑 Key (0–255)</label>
+      <input type="number" id="key-val" min="0" max="255" value="42">
+      <span style="font-size:12px;color:#7878aa">Use the same key to decrypt</span>
+    </div>
+
+    <div class="form-row">
+      <label>⚙️ Method</label>
+      <select id="method">
+        <option value="xor">XOR cipher</option>
+        <option value="swap">Channel swap (R ↔ B)</option>
+        <option value="shift">Pixel value shift</option>
+        <option value="invert">Invert + XOR</option>
+        <option value="shuffle">Row shuffle</option>
+      </select>
+    </div>
+
+    <div class="method-hint" id="method-hint"></div>
+
+    <div class="btn-row">
+      <button class="btn-enc" id="btn-enc">🔒 Encrypt</button>
+      <button class="btn-dec" id="btn-dec">🔓 Decrypt</button>
+      <button class="btn-dl"  id="btn-dl"  disabled>⬇ Download result</button>
+      <button class="btn-reset" id="btn-reset">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="card">
+    <h2>Step 3 — Preview</h2>
+    <div class="canvas-row">
+      <div class="canvas-wrap">
+        <span>Original</span>
+        <canvas id="c-orig" width="380" height="260"></canvas>
+      </div>
+      <div class="canvas-wrap">
+        <span id="proc-label">Output</span>
+        <canvas id="c-proc" width="380" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="card" id="stats-card" style="display:none">
+    <h2>Image stats</h2>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="n" id="s-w">—</div><div class="l">Width (px)</div></div>
+      <div class="stat-box"><div class="n" id="s-h">—</div><div class="l">Height (px)</div></div>
+      <div class="stat-box"><div class="n" id="s-px">—</div><div class="l">Total pixels</div></div>
+      <div class="stat-box"><div class="n" id="s-delta">—</div><div class="l">Avg pixel Δ</div></div>
+    </div>
+  </div>
+
+  <!-- Reference table -->
+  <div class="card">
+    <h2>Method reference</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:#aaaacc">
+      <thead>
+        <tr style="border-bottom:1px solid #2e2e4a">
+          <th style="text-align:left;padding:8px 0;color:#7878aa">Method</th>
+          <th style="text-align:left;padding:8px 0;color:#7878aa">Encrypt operation</th>
+          <th style="text-align:left;padding:8px 0;color:#7878aa">Decrypt operation</th>
+          <th style="text-align:left;padding:8px 0;color:#7878aa">Key needed?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #1e1e38"><td style="padding:8px 0;font-weight:600;color:#e2e2f0">XOR cipher</td><td style="padding:8px 0">pixel XOR key</td><td style="padding:8px 0">pixel XOR key (same)</td><td style="padding:8px 0;color:#34d399">✓ Yes</td></tr>
+        <tr style="border-bottom:1px solid #1e1e38"><td style="padding:8px 0;font-weight:600;color:#e2e2f0">Channel swap</td><td style="padding:8px 0">R ↔ B swap</td><td style="padding:8px 0">R ↔ B swap (same)</td><td style="padding:8px 0;color:#8888aa">— No</td></tr>
+        <tr style="border-bottom:1px solid #1e1e38"><td style="padding:8px 0;font-weight:600;color:#e2e2f0">Pixel shift</td><td style="padding:8px 0">(pixel + key) mod 256</td><td style="padding:8px 0">(pixel − key) mod 256</td><td style="padding:8px 0;color:#34d399">✓ Yes</td></tr>
+        <tr style="border-bottom:1px solid #1e1e38"><td style="padding:8px 0;font-weight:600;color:#e2e2f0">Invert + XOR</td><td style="padding:8px 0">(255 − pixel) XOR key</td><td style="padding:8px 0">apply again</td><td style="padding:8px 0;color:#34d399">✓ Yes</td></tr>
+        <tr><td style="padding:8px 0;font-weight:600;color:#e2e2f0">Row shuffle</td><td style="padding:8px 0">rows scrambled by RNG seed</td><td style="padding:8px 0">rows unscrambled</td><td style="padding:8px 0;color:#34d399">✓ Yes</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // ── DOM refs ──────────────────────────────────────────────
+  const uploadArea  = document.getElementById('upload-area');
+  const uploadText  = document.getElementById('upload-text');
+  const imgInput    = document.getElementById('img-input');
+  const keyVal      = document.getElementById('key-val');
+  const methodSel   = document.getElementById('method');
+  const btnEnc      = document.getElementById('btn-enc');
+  const btnDec      = document.getElementById('btn-dec');
+  const btnDl       = document.getElementById('btn-dl');
+  const btnReset    = document.getElementById('btn-reset');
+  const cOrig       = document.getElementById('c-orig');
+  const cProc       = document.getElementById('c-proc');
+  const ctxO        = cOrig.getContext('2d');
+  const ctxP        = cProc.getContext('2d');
+  const statusBadge = document.getElementById('status-badge');
+  const procLabel   = document.getElementById('proc-label');
+  const statsCard   = document.getElementById('stats-card');
+  const methodHint  = document.getElementById('method-hint');
+  const alertNoImg  = document.getElementById('alert-noimg');
+
+  let origData = null;
+  let W = 0, H = 0;
+
+  // ── Method hints ──────────────────────────────────────────
+  const hints = {
+    xor:    'XOR each RGB channel with the key value. Applying it twice with the same key restores the original.',
+    swap:   'Swaps the Red and Blue channels. Key is not used. Applying twice restores original.',
+    shift:  'Adds key to each channel value (mod 256) on encrypt; subtracts on decrypt. Same key must be used.',
+    invert: 'Inverts each channel (255 − value) then XORs with key. Apply the same operation to decrypt.',
+    shuffle:'Scrambles image rows using the key as a random seed. Decrypt reverses the shuffle with the same seed.'
+  };
+  function updateHint() { methodHint.textContent = hints[methodSel.value]; }
+  methodSel.addEventListener('change', updateHint);
+  updateHint();
+
+  // ── Upload area click ─────────────────────────────────────
+  uploadArea.addEventListener('click', () => imgInput.click());
+  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.style.borderColor = '#7c6af5'; });
+  uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = ''; });
+  uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImage(file);
+  });
+
+  imgInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) loadImage(file);
+  });
+
+  // ── Load image into canvas ────────────────────────────────
+  function loadImage(file) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const img = new Image();
+      img.onload = function() {
+        // Scale to fit canvas keeping aspect ratio
+        const maxW = 380, maxH = 280;
+        let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+        W = Math.round(img.width  * ratio);
+        H = Math.round(img.height * ratio);
+
+        cOrig.width  = cProc.width  = W;
+        cOrig.height = cProc.height = H;
+
+        ctxO.clearRect(0, 0, W, H);
+        ctxO.drawImage(img, 0, 0, W, H);
+        ctxP.clearRect(0, 0, W, H);
+
+        origData = ctxO.getImageData(0, 0, W, H);
+
+        // Update UI
+        uploadArea.classList.add('has-image');
+        uploadText.textContent = '✅ ' + file.name + ' (' + img.width + '×' + img.height + ')';
+        setStatus('Ready', 'badge-ready');
+        btnDl.disabled = true;
+        statsCard.style.display = 'none';
+        procLabel.textContent = 'Output';
+        alertNoImg.style.display = 'none';
+      };
+      img.onerror = function() { alert('Could not load image. Please try a different file.'); };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Seeded RNG ────────────────────────────────────────────
+  function seededRand(seed) {
+    let s = (seed + 1) * 1664525;
+    return () => {
+      s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+      return (s >>> 0) / 4294967296;
+    };
+  }
+
+  function shuffleIndices(n, seed) {
+    const idx = Array.from({length: n}, (_, i) => i);
+    const rand = seededRand(seed);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    return idx;
+  }
+
+  // ── Pixel processing ──────────────────────────────────────
+  function processPixels(srcData, key, mode) {
+    const arr = new Uint8ClampedArray(srcData);
+    const k   = parseInt(key) & 0xFF;
+    const m   = methodSel.value;
+
+    if (m === 'xor') {
+      for (let i = 0; i < arr.length; i += 4) {
+        arr[i] ^= k; arr[i+1] ^= k; arr[i+2] ^= k;
+      }
+    } else if (m === 'swap') {
+      for (let i = 0; i < arr.length; i += 4) {
+        const tmp = arr[i]; arr[i] = arr[i+2]; arr[i+2] = tmp;
+      }
+    } else if (m === 'shift') {
+      const s = mode === 'enc' ? k : (256 - k) % 256;
+      for (let i = 0; i < arr.length; i += 4) {
+        arr[i]   = (arr[i]   + s) & 0xFF;
+        arr[i+1] = (arr[i+1] + s) & 0xFF;
+        arr[i+2] = (arr[i+2] + s) & 0xFF;
+      }
+    } else if (m === 'invert') {
+      for (let i = 0; i < arr.length; i += 4) {
+        arr[i]   = (255 - arr[i])   ^ k;
+        arr[i+1] = (255 - arr[i+1]) ^ k;
+        arr[i+2] = (255 - arr[i+2]) ^ k;
+      }
+    } else if (m === 'shuffle') {
+      const rowSize = W * 4;
+      const indices = shuffleIndices(H, k);
+      const tmp = new Uint8ClampedArray(arr);
+      if (mode === 'enc') {
+        for (let r = 0; r < H; r++) {
+          const srcR = r * rowSize, dstR = indices[r] * rowSize;
+          for (let c = 0; c < rowSize; c++) arr[dstR + c] = tmp[srcR + c];
+        }
+      } else {
+        for (let r = 0; r < H; r++) {
+          const srcR = indices[r] * rowSize, dstR = r * rowSize;
+          for (let c = 0; c < rowSize; c++) arr[dstR + c] = tmp[srcR + c];
+        }
+      }
+    }
+    return arr;
+  }
+
+  // ── Stats ─────────────────────────────────────────────────
+  function calcDelta(a, b) {
+    let sum = 0, count = 0;
+    for (let i = 0; i < a.length; i += 4) {
+      sum += Math.abs(a[i]-b[i]) + Math.abs(a[i+1]-b[i+1]) + Math.abs(a[i+2]-b[i+2]);
+      count += 3;
+    }
+    return Math.round(sum / count);
+  }
+
+  function showStats(result) {
+    statsCard.style.display = 'block';
+    document.getElementById('s-w').textContent     = W;
+    document.getElementById('s-h').textContent     = H;
+    document.getElementById('s-px').textContent    = (W * H).toLocaleString();
+    document.getElementById('s-delta').textContent = calcDelta(origData.data, result);
+  }
+
+  function setStatus(text, cls) {
+    statusBadge.textContent = text;
+    statusBadge.className   = 'badge ' + cls;
+  }
+
+  function guardImage() {
+    if (!origData) {
+      alertNoImg.style.display = 'block';
+      return false;
+    }
+    alertNoImg.style.display = 'none';
+    return true;
+  }
+
+  // ── Encrypt ───────────────────────────────────────────────
+  btnEnc.addEventListener('click', () => {
+    if (!guardImage()) return;
+    const result = processPixels(origData.data, keyVal.value, 'enc');
+    ctxP.putImageData(new ImageData(result, W, H), 0, 0);
+    procLabel.textContent = 'Encrypted';
+    setStatus('Encrypted', 'badge-enc');
+    btnDl.disabled = false;
+    showStats(result);
+  });
+
+  // ── Decrypt ───────────────────────────────────────────────
+  btnDec.addEventListener('click', () => {
+    if (!guardImage()) return;
+    const cur = ctxP.getImageData(0, 0, W, H);
+    const hasContent = Array.from(cur.data).some(v => v !== 0);
+    const src = hasContent ? cur.data : origData.data;
+    const result = processPixels(src, keyVal.value, 'dec');
+    ctxP.putImageData(new ImageData(result, W, H), 0, 0);
+    procLabel.textContent = 'Decrypted';
+    setStatus('Decrypted', 'badge-dec');
+    btnDl.disabled = false;
+    showStats(result);
+  });
+
+  // ── Download ──────────────────────────────────────────────
+  btnDl.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.download = 'pixel_result.png';
+    a.href = cProc.toDataURL('image/png');
+    a.click();
+  });
+
+  // ── Reset ─────────────────────────────────────────────────
+  btnReset.addEventListener('click', () => {
+    if (!origData) return;
+    ctxP.clearRect(0, 0, W, H);
+    procLabel.textContent = 'Output';
+    setStatus('Ready', 'badge-ready');
+    btnDl.disabled = true;
+    statsCard.style.display = 'none';
+  });
+</script>
+</body>
+</html>
